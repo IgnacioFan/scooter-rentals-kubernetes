@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:9.6-alpine
+    container_name: postgres
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_DB: wemo-scooter-rent
+      POSTGRES_USER: wemo
+      POSTGRES_PASSWORD: wemo
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - wemo
+
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    ports:
+      - 5672:5672 # RabbitMQ main port
+      - 15672:15672 # RabbitMQ Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - wemo
+
+  scooter-rent-service:
+    build:
+      context: ./ScooterRentService
+      dockerfile: Dockerfile.dev
+    container_name: scooter-rent-service
+    ports:
+      - 3000:3000
+    volumes:
+      - ./ScooterRentService:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - postgres
+      - rabbitmq
+    env_file:
+      - ./ScooterRentService/.env
+    networks:
+      - wemo
+    command: >
+      sh -c "
+      npx prisma migrate dev &&
+      npx prisma db seed &&
+      npm run start:dev
+      "
+
+  order-service:
+    build:
+      context: ./OrderService
+      dockerfile: Dockerfile.dev
+    container_name: order-service
+    ports:
+      - 3001:3000
+    volumes:
+      - ./OrderService:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - postgres
+      - rabbitmq
+    env_file:
+      - ./OrderService/.env
+    networks:
+      - wemo
+    command: >
+      sh -c "
+      npx prisma migrate dev &&
+      npm run start:dev
+      "
+
+  prisma-studio-scooter:
+    build:
+      context: ./ScooterRentService
+      dockerfile: Dockerfile.dev
+    container_name: prisma-studio-scooter-rent
+    ports:
+      - 5555:5555
+    depends_on:
+      - scooter-rent-service
+    env_file:
+      - ./ScooterRentService/.env
+    command: npx prisma studio
+    networks:
+      - wemo
+
+  prisma-studio-order:
+    build:
+      context: ./OrderService
+      dockerfile: Dockerfile.dev
+    container_name: prisma-studio-order
+    ports:
+      - 5556:5555
+    depends_on:
+      - order-service
+    env_file:
+      - ./OrderService/.env
+    command: npx prisma studio
+    networks:
+      - wemo
+
+volumes:
+  pg-data:
+
+networks:
+  wemo:
+    driver: bridge
