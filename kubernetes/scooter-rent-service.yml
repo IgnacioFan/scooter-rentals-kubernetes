@@ -1,34 +1,40 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: scooter-rent-service
-spec:
-  ports:
-    - port: 3000
-  selector:
-    app: scooter-rent-service
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: scooter-rent-service
+  name: scooter-rent
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: scooter-rent-service
+      app: scooter-rent
   template:
     metadata:
       labels:
-        app: scooter-rent-service
+        app: scooter-rent
     spec:
       containers:
-        - name: scooter-rent-service
+        - name: scooter-rent
           image: nachofan/scooter-rent:latest
           ports:
             - containerPort: 3000
           env:
             - name: DATABASE_URL
-              value: postgres://postgres:postgres@postgres:5432/wemo-scooter-rent?schema=public
+              value: "postgres://wemo:wemo@postgres:5432/wemo-scooter-rent"
             - name: RABBITMQ_URL
-              value: amqp://admin:password@rabbitmq:5672
+              value: "amqp://rabbitmq:5672"
+          command:
+            [ "sh", "-c", "npx prisma migrate dev && npx prisma db seed && npm run start" ]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scooter-rent-service
+spec:
+  selector:
+    app: scooter-rent
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+  type: NodePort
