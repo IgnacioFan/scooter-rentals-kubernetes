@@ -1,0 +1,6 @@
+[submodule "ScooterRentService"]
+	path = ScooterRentService
+	url = https://github.com/IgnacioFan/ScooterRentService.git
+[submodule "OrderService"]
+	path = OrderService
+	url = https://github.com/IgnacioFan/OrderService.git
